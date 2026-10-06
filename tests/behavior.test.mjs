@@ -7,9 +7,10 @@ import * as profileAPI from '../deploy/profile.mjs';
 import { createConfetti } from '../deploy/confetti.mjs';
 import { setupPWA } from '../deploy/pwa.mjs';
 import { createAudio } from '../deploy/audio.mjs';
+import { createGameView } from '../deploy/ui.mjs';
 import { app, sw, html } from './invariants.mjs';
 
-function game({ stored = null, learningStored = null, avatarStored = null, storage = new Map(), storageThrows = false, missingMeter = false, serviceWorker, location, AudioContext } = {}) {
+function game({ appSource = app, confettiFactory = createConfetti, stored = null, learningStored = null, avatarStored = null, storage = new Map(), storageThrows = false, missingMeter = false, serviceWorker, location, AudioContext } = {}) {
   const timers = new Map();
   let nextTimer = 0;
   const documentEvents = eventTarget();
@@ -24,7 +25,7 @@ function game({ stored = null, learningStored = null, avatarStored = null, stora
   const options = [...html.matchAll(/data-avatar="([^"]+)"/g)].map(([, emoji]) => ({ ...element(), dataset: { avatar: emoji } }));
   const elements = new Map();
   const context = vm.createContext({
-    URL, engine, profileAPI, createConfetti, setupPWA, createAudio,
+    URL, engine, profileAPI, createConfetti: confettiFactory, setupPWA, createAudio, createGameView,
     document: { ...documentEvents, querySelectorAll: selector => selector === '.cell' ? cells : options, querySelector: id => {
       if (!html.includes(`id="${id.slice(1)}"`) || (missingMeter && id.startsWith('#brainpower'))) return null;
       if (!elements.has(id)) elements.set(id, element());
@@ -38,7 +39,7 @@ function game({ stored = null, learningStored = null, avatarStored = null, stora
       setItem(key, value) { if (storageThrows) throw Error('unavailable'); storage.set(key, value); } },
     matchMedia: () => ({ matches: true })
   });
-  vm.runInContext(app.replace(/^(?:import .*?;\n)+/, 'const { HUMAN, COMPUTER, LEARNING, learningLevel, earnedLearning, getResult, emptySquares, createBot } = engine;\nconst { findAvatar, createProfileStore } = profileAPI;\n'), context);
+  vm.runInContext(appSource.replace(/^(?:import .*?;\n)+/, 'const { HUMAN, COMPUTER, LEARNING, learningLevel, earnedLearning, getResult, emptySquares, createBot } = engine;\nconst { findAvatar, createProfileStore } = profileAPI;\n'), context);
   options.forEach(option => { option.parent = elements.get('#avatarPicker'); });
   return { run: code => vm.runInContext(code, context), elements, cells, options, documentListeners: documentEvents.listeners, windowListeners: windowEvents.listeners, timers, storage };
 }
@@ -102,7 +103,7 @@ function worker({ cached, network = async () => { throw Error('offline'); }, put
     self: { registration: { scope },
       addEventListener: (name, fn) => { handlers[name] = fn; },
       clients: { claim: async () => {} }, skipWaiting: async () => {} },
-    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v29'],
+    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v31'],
       delete: async key => { deleted.push(key); } }
   });
   return { handlers, deleted, writes, request(path, mode = 'cors') {
@@ -375,5 +376,34 @@ test('registered lifecycle handlers discard stale audio contexts', async () => {
       g.windowListeners[event]({});
     }
     assert.equal(context.state, 'closed');
+    if (event === 'hidden') assert.equal(await g.run('audio.ensureContext()'), null);
+    g.run("document.visibilityState = 'visible'");
   }
+});
+
+function celebrationChecks(appSource = app) {
+  for (const [result, expected] of [
+    ["{ type: 'win', player: HUMAN, line: [0,1,2] }", 1],
+    ["{ type: 'win', player: COMPUTER, line: [0,1,2] }", 0],
+    ["{ type: 'draw' }", 0]
+  ]) {
+    let bursts = 0;
+    const g = game({ appSource, confettiFactory: () => ({ resize() {}, launch() { bursts++; } }) });
+    g.run(`finishRound(${result})`);
+    assert.equal(bursts, expected);
+  }
+}
+
+test('human wins alone trigger a confetti celebration', () => celebrationChecks());
+
+test('behavior tests kill a missing human celebration', () => {
+  const changed = app.replace('confetti.launch();', 'void 0;');
+  assert.notEqual(changed, app);
+  assert.throws(() => celebrationChecks(changed), assert.AssertionError);
+});
+
+test('behavior tests kill confetti triggered for bot wins', () => {
+  const changed = app.replace('score.computer += 1;', 'score.computer += 1; launchConfetti();');
+  assert.notEqual(changed, app);
+  assert.throws(() => celebrationChecks(changed), assert.AssertionError);
 });

@@ -20,4 +20,6 @@ The integration harness retains multiple event listeners, supports once handlers
 
 `effects.test.mjs` tests confetti sizing, animation replacement/completion, reduced motion, install prompt choices, installed-state cleanup, and worker registration failures.
 
-`audio.test.mjs` tests tone scheduling, pitch slides, node cleanup, Sound mute behavior, constructor fallback, and jingle timing directly. Audio source regression/mutation checks target the extracted module. Real iPhone playback still requires device testing.
+`audio.test.mjs` tests tone scheduling, pitch slides, node cleanup, Sound mute behavior, constructor fallback, audio-clock jingle timing, overlapping recovery, stalled/late resume, pending-playback cancellation, and partial node failures directly. Audio source regression/mutation checks target the extracted module. Real iPhone playback still requires device testing.
+
+`ui.test.mjs` tests rendering directly, including a mutation that exposes internal X/O tokens. Human-only celebrations and mutations that remove or misroute confetti are checked through executed controller behavior instead of source slices. UI wording, styling, and audio architecture still have targeted source guards.

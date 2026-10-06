@@ -8,10 +8,6 @@ const mutants = [
     htmlSource: html.replace('id="avatarPicker"', 'id="removedPicker"')
   },
   {
-    name: 'board ignores selected avatar',
-    appSource: app.replace("cell.textContent = player === HUMAN ? selectedAvatar.emoji : '🤖';", "cell.textContent = player;")
-  },
-  {
     name: 'Sound control disappears',
     htmlSource: html.replace('id="soundToggle"', 'id="removedSound"')
   },
@@ -43,7 +39,7 @@ const mutants = [
   {
     name: 'resume is no longer awaited',
     htmlSource: html,
-    audioSource: audio.replaceAll('await audioContext.resume();', 'audioContext.resume();'),
+    audioSource: audio.replace('Promise.resolve(context.resume())', 'Promise.resolve()'),
     swSource: sw, cssSource: css
   },
   {
@@ -55,7 +51,7 @@ const mutants = [
   {
     name: 'Web Audio node cleanup disappears',
     htmlSource: html,
-    audioSource: audio.replace(/oscillator\.disconnect\(\);\s*gainNode\.disconnect\(\);/, ''),
+    audioSource: audio.replace(/oscillator\?\.disconnect\(\);/, ''),
     swSource: sw, cssSource: css
   },
   {
@@ -68,12 +64,6 @@ const mutants = [
     name: 'gameplay forcibly turns sound off',
     htmlSource: html,
     appSource: app.replace('function humanMove(index) {', 'function humanMove(index) {\n  soundToggle.checked = false;'),
-    swSource: sw, cssSource: css
-  },
-  {
-    name: 'human victory stops launching confetti',
-    htmlSource: html,
-    appSource: app.replace('      launchConfetti();', ''),
     swSource: sw, cssSource: css
   },
   {

@@ -1,4 +1,4 @@
-const CACHE = 'bippity-boop-v29';
+const CACHE = 'bippity-boop-v31';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './confetti.mjs',
   './pwa.mjs',
   './audio.mjs',
+  './ui.mjs',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'

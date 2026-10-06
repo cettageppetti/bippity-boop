@@ -7,7 +7,7 @@ test('UI and gameplay regression invariants hold', () => {
 });
 
 test('service worker cache is bumped for this release', () => {
-  assert.match(sw, /const CACHE = 'bippity-boop-v29';/);
+  assert.match(sw, /const CACHE = 'bippity-boop-v31';/);
 });
 
 test('score cards show the robot and retain matching label weight', () => {
