@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#6d5dfc" />
+  <meta name="description" content="Bippity-Boop: a colorful tic-tac-toe game with delightfully silly bip and boop sounds." />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Bippity-Boop</title>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">TIC · TAC · TOE · BUT SILLY</p>
+        <h1>Bippity-<span>Boop</span></h1>
+        <p class="subtitle">Play as the <strong>🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>. Every move gets a tiny synthesized <em>bip</em> or <em>boop</em>.</p>
+      </div>
+      <button id="installButton" class="install-button" hidden>Install app</button>
+    </header>
+
+    <section class="game-card" aria-label="Bippity-Boop tic tac toe game">
+      <div class="score-row" aria-label="Score">
+        <div class="score-pill player-score"><span>You</span><strong id="playerScore">0</strong></div>
+        <div class="score-pill draws-score"><span>Draws</span><strong id="drawScore">0</strong></div>
+        <div class="score-pill computer-score"><span>BoopBot</span><strong id="computerScore">0</strong></div>
+      </div>
+
+      <div class="status-wrap">
+        <p id="status" class="status" aria-live="polite">Your move. Pick a square.</p>
+        <div class="controls">
+          <label class="toggle">
+            <input id="soundToggle" type="checkbox" checked />
+            <span>Sound</span>
+          </label>
+          <label class="toggle">
+            <input id="smartToggle" type="checkbox" checked />
+            <span>Smart bot</span>
+          </label>
+        </div>
+      </div>
+
+      <div id="board" class="board" role="grid" aria-label="Tic tac toe board">
+        <button class="cell" data-cell="0" role="gridcell" aria-label="Top left"></button>
+        <button class="cell" data-cell="1" role="gridcell" aria-label="Top center"></button>
+        <button class="cell" data-cell="2" role="gridcell" aria-label="Top right"></button>
+        <button class="cell" data-cell="3" role="gridcell" aria-label="Middle left"></button>
+        <button class="cell" data-cell="4" role="gridcell" aria-label="Center"></button>
+        <button class="cell" data-cell="5" role="gridcell" aria-label="Middle right"></button>
+        <button class="cell" data-cell="6" role="gridcell" aria-label="Bottom left"></button>
+        <button class="cell" data-cell="7" role="gridcell" aria-label="Bottom center"></button>
+        <button class="cell" data-cell="8" role="gridcell" aria-label="Bottom right"></button>
+      </div>
+
+      <div class="action-row">
+        <button id="newRoundButton" class="primary-button">New game</button>
+        <button id="resetScoreButton" class="secondary-button">Reset score</button>
+      </div>
+    </section>
+
+    <p class="tiny-note">Tip: install Bippity-Boop on your phone for a full-screen, offline-friendly version.</p>
+  </main>
+
+  <canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+  <script src="app.js" defer></script>
+</body>
+</html>

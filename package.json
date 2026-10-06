@@ -1,0 +1,9 @@
+{
+  "name": "bippity-boop",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:regression": "node --test tests/regression.test.mjs",
+    "test:mutation": "node --test tests/mutation.test.mjs"
+  }
+}
