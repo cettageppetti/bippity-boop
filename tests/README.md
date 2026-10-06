@@ -10,4 +10,4 @@ npm test
 `mutation.test.mjs` deliberately mutates those invariants and verifies the regression checks detect each mutation.
 
 `invariants.mjs` shares source checks without registering duplicate tests.
-`behavior.test.mjs` executes the app and service worker in isolated Node VM contexts. It covers reset timers, score validation/storage failures, tactical bot choices, exhaustive unbeatable minimax play, single-use smart imperfections, audio recovery, and cache isolation/offline behavior. Device audio and visual layout still require browser/device checks.
+`behavior.test.mjs` executes the app and service worker in isolated Node VM contexts. It covers reset timers, score validation/storage failures, capability unlocks, learning persistence/rewards, Bonk resets, exhaustive unbeatable minimax play, single-use smart imperfections, audio recovery, and cache isolation/offline behavior. Device audio and visual layout still require browser/device checks.

@@ -7,5 +7,5 @@ test('UI and gameplay regression invariants hold', () => {
 });
 
 test('service worker cache is bumped for this release', () => {
-  assert.match(sw, /const CACHE = 'bippity-boop-v19';/);
+  assert.match(sw, /const CACHE = 'bippity-boop-v22';/);
 });

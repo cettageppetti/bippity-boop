@@ -36,12 +36,16 @@
             <input id="soundToggle" type="checkbox" checked />
             <span>Sound</span>
           </label>
-          <label class="toggle">
-            <input id="smartToggle" type="checkbox" checked />
-            <span>Smart bot</span>
-          </label>
         </div>
       </div>
+
+      <section class="brainpower" aria-label="BoopBot learning">
+        <div class="brainpower-heading"><span id="brainpowerLabel">BoopBot Brainpower</span><strong id="brainpowerValue">0%</strong></div>
+        <div id="brainpowerMeter" class="brainpower-meter" role="progressbar" aria-labelledby="brainpowerLabel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="brainpowerFill" class="brainpower-fill"></div>
+        </div>
+        <p id="brainpowerFlavor" class="brainpower-flavor">BoopBot is mostly guessing.</p>
+      </section>
 
       <div id="board" class="board" role="grid" aria-label="Tic tac toe board">
         <button class="cell" data-cell="0" role="gridcell" aria-label="Top left"></button>
@@ -57,7 +61,7 @@
 
       <div class="action-row">
         <button id="newRoundButton" class="primary-button">New game</button>
-        <button id="resetScoreButton" class="secondary-button">Reset score</button>
+        <button id="resetScoreButton" class="secondary-button"><span class="bonk-icon" aria-hidden="true">🥊</span> Bonk BoopBot</button>
       </div>
     </section>
 

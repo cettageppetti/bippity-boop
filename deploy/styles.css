@@ -406,3 +406,52 @@ h1 span {
 @media (prefers-reduced-motion: reduce) {
   h1 { animation: none; background-position: 50% 50%; }
 }
+
+.brainpower {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 540px);
+  margin: 0 auto 16px;
+}
+.brainpower-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: .9rem;
+  font-weight: 850;
+  margin-bottom: 8px;
+}
+.brainpower-heading strong { color: var(--aqua); }
+.brainpower-meter {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,.08);
+}
+.brainpower-fill {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff63c3, #ffb24d, #ffe66d, #57f0b1, #46d9ff, #9b7cff);
+  transition: width .6s ease;
+}
+.brainpower-flavor {
+  margin: 7px 0 0;
+  color: var(--muted-2);
+  font-size: .8rem;
+  line-height: 1.4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brainpower-fill { transition: none; }
+}
+
+#resetScoreButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4em;
+}
+.bonk-icon {
+  font-size: 1.6em;
+  line-height: 1;
+}

@@ -3,6 +3,8 @@ const COMPUTER = 'O';
 const DISPLAY_PIECES = { [HUMAN]: '🦄', [COMPUTER]: '🤖' };
 const PIECE_NAMES = { [HUMAN]: 'unicorn', [COMPUTER]: 'robot' };
 const SMART_BOT_IMPERFECTION_RATE = 0.12;
+const MAX_LEARNING_POINTS = 56;
+const POINTS_PER_LEVEL = 4;
 const wins = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8],
   [0, 3, 6], [1, 4, 7], [2, 5, 8],
@@ -17,7 +19,10 @@ const drawScoreEl = document.querySelector('#drawScore');
 const newRoundButton = document.querySelector('#newRoundButton');
 const resetScoreButton = document.querySelector('#resetScoreButton');
 const soundToggle = document.querySelector('#soundToggle');
-const smartToggle = document.querySelector('#smartToggle');
+const brainpowerMeter = document.querySelector('#brainpowerMeter');
+const brainpowerValue = document.querySelector('#brainpowerValue');
+const brainpowerFill = document.querySelector('#brainpowerFill');
+const brainpowerFlavor = document.querySelector('#brainpowerFlavor');
 const installButton = document.querySelector('#installButton');
 const confettiCanvas = document.querySelector('#confetti');
 const ctx = confettiCanvas.getContext('2d');
@@ -29,12 +34,15 @@ let computerMoveTimer = null;
 let deferredInstallPrompt = null;
 let audioContext = null;
 let score = loadScore();
+let learningPoints = loadLearning();
+let roundLearningLevel = learningLevel();
 let confettiPieces = [];
 let confettiFrame = 0;
 let smartBotImperfectMovePending = false;
 let smartBotImperfectMoveUsed = false;
 
 renderScore();
+renderBrainpower();
 resizeConfetti();
 window.addEventListener('resize', resizeConfetti);
 armSmartBotImperfectMove();
@@ -43,9 +51,13 @@ cells.forEach(cell => cell.addEventListener('click', () => humanMove(Number(cell
 newRoundButton.addEventListener('click', startNewRound);
 resetScoreButton.addEventListener('click', () => {
   score = { human: 0, computer: 0, draws: 0 };
+  learningPoints = 0;
   saveScore();
+  saveLearning();
   renderScore();
+  renderBrainpower();
   startNewRound();
+  statusEl.textContent = "BONK! BoopBot forgot everything. Your move.";
 });
 
 window.addEventListener('beforeinstallprompt', event => {
@@ -92,12 +104,7 @@ function computerMove() {
   const available = emptySquares(board);
   if (!available.length) return finishRound({ type: 'draw' });
 
-  let index;
-  if (smartToggle.checked) {
-    index = chooseSmartMove(board);
-  } else {
-    index = basicMove(board);
-  }
+  const index = chooseLearningMove(board);
 
   placePiece(index, COMPUTER);
   computerThinking = false;
@@ -125,6 +132,7 @@ function placePiece(index, player) {
 }
 
 function finishRound(result) {
+  if (roundOver) return;
   roundOver = true;
   computerThinking = false;
   setBoardDisabled(true);
@@ -147,8 +155,13 @@ function finishRound(result) {
     drawJingle();
   }
 
+  learningPoints = Math.min(MAX_LEARNING_POINTS, learningPoints + (
+    result.type === "draw" ? 0.5 : result.player === HUMAN ? 1 : 0.25
+  ));
   saveScore();
+  saveLearning();
   renderScore();
+  renderBrainpower();
 }
 
 function startNewRound() {
@@ -157,6 +170,7 @@ function startNewRound() {
   board = Array(9).fill('');
   roundOver = false;
   computerThinking = false;
+  roundLearningLevel = learningLevel();
   armSmartBotImperfectMove();
   cells.forEach((cell, index) => {
     cell.textContent = '';
@@ -200,33 +214,126 @@ function findImmediateMove(state, player) {
   return null;
 }
 
-function basicMove(state) {
-  const available = emptySquares(state);
-
-  // Basic Bot understands only one-move tactics: finish a win or stop one.
-  const winningMove = findImmediateMove(state, COMPUTER);
-  if (winningMove !== null) return winningMove;
-
-  const blockingMove = findImmediateMove(state, HUMAN);
-  if (blockingMove !== null) return blockingMove;
-
-  // Most of the time it follows simple positional rules, but it does not
-  // calculate forks or future sequences. The occasional loose move keeps
-  // this mode noticeably easier than Smart Bot.
-  if (Math.random() < 0.2) return randomChoice(available);
-
+function positionalMove(state, oppositeAware = false) {
   if (!state[4]) return 4;
-
-  const oppositeCorners = [[0, 8], [2, 6], [6, 2], [8, 0]];
-  const opposite = oppositeCorners
-    .filter(([humanCorner, oppositeCorner]) => state[humanCorner] === HUMAN && !state[oppositeCorner])
-    .map(([, oppositeCorner]) => oppositeCorner);
-  if (opposite.length) return randomChoice(opposite);
-
+  const available = emptySquares(state);
+  if (oppositeAware) {
+    const opposite = [[0, 8], [2, 6], [6, 2], [8, 0]]
+      .filter(([humanCorner, oppositeCorner]) => state[humanCorner] === HUMAN && !state[oppositeCorner])
+      .map(([, oppositeCorner]) => oppositeCorner);
+    if (opposite.length) return randomChoice(opposite);
+  }
   const corners = available.filter(index => [0, 2, 6, 8].includes(index));
-  if (corners.length) return randomChoice(corners);
+  return randomChoice(corners.length ? corners : available);
+}
 
-  return randomChoice(available);
+function forkMoves(state, player) {
+  return emptySquares(state).filter(index => {
+    const next = [...state];
+    next[index] = player;
+    const threats = emptySquares(next).filter(target => {
+      next[target] = player;
+      const result = getResult(next);
+      next[target] = '';
+      return result?.type === 'win' && result.player === player;
+    });
+    return threats.length > 1;
+  });
+}
+
+function defendFork(state) {
+  const forks = forkMoves(state, HUMAN);
+  if (forks.length === 1) return forks[0];
+  if (!forks.length) return null;
+  // A forcing threat can prevent several forks at once. Check the human's
+  // forced block, or every reply when our move does not create a threat.
+  const safe = emptySquares(state).filter(index => {
+    const next = [...state];
+    next[index] = COMPUTER;
+    const forcedBlock = findImmediateMove(next, COMPUTER);
+    const replies = forcedBlock === null ? emptySquares(next) : [forcedBlock];
+    return replies.every(reply => {
+      const afterReply = [...next];
+      afterReply[reply] = HUMAN;
+      if (getResult(afterReply)?.player === HUMAN) return false;
+      if (findImmediateMove(afterReply, COMPUTER) !== null) return true;
+      const threats = emptySquares(afterReply).filter(target => {
+        const next = [...afterReply];
+        next[target] = HUMAN;
+        return getResult(next)?.player === HUMAN;
+      });
+      return threats.length <= 1;
+    });
+  });
+  return safe.length ? randomChoice(safe) : null;
+}
+
+function chooseLearningMove(state, level = roundLearningLevel) {
+  if (level >= 14) {
+    const moves = analyzeComputerMoves(state);
+    const bestScore = Math.max(...moves.map(move => move.score));
+    return randomChoice(moves.filter(move => move.score === bestScore).map(move => move.index));
+  }
+  if (level >= 4) {
+    const win = findImmediateMove(state, COMPUTER);
+    if (win !== null) return win;
+  }
+  if (level >= 6) {
+    const block = findImmediateMove(state, HUMAN);
+    if (block !== null) return block;
+  }
+  if (level >= 12) return chooseSmartMove(state);
+  if (level >= 10) {
+    const forks = forkMoves(state, COMPUTER);
+    if (forks.length) return randomChoice(forks);
+    const defense = defendFork(state);
+    if (defense !== null) return defense;
+  }
+  if (level >= 2) return positionalMove(state, level >= 8);
+  return randomChoice(emptySquares(state));
+}
+
+function learningLevel() {
+  return Math.min(14, Math.floor(learningPoints / POINTS_PER_LEVEL));
+}
+
+function loadLearning() {
+  try {
+    const value = JSON.parse(localStorage.getItem('bippity-boop-learning'));
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0
+      ? Math.min(MAX_LEARNING_POINTS, value) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveLearning() {
+  try {
+    localStorage.setItem('bippity-boop-learning', JSON.stringify(learningPoints));
+  } catch {
+    // Learning still works for this session if storage is unavailable.
+  }
+}
+
+function renderBrainpower() {
+  // A previous worker may briefly serve the old HTML during an update.
+  // Optional presentation must not prevent board handlers from initializing.
+  if (!brainpowerMeter || !brainpowerValue || !brainpowerFill || !brainpowerFlavor) return;
+  const percent = Math.floor(learningPoints / MAX_LEARNING_POINTS * 100);
+  brainpowerValue.textContent = `${percent}%`;
+  brainpowerFill.style.width = `${percent}%`;
+  brainpowerMeter.setAttribute('aria-valuenow', String(percent));
+  const flavors = [
+    'BoopBot is mostly guessing.',
+    'BoopBot noticed something.',
+    'BoopBot is learning your tricks.',
+    'BoopBot has discovered strategy.',
+    'BoopBot is getting suspiciously clever.',
+    'BoopBot sees the forks coming.',
+    'BoopBot sees almost everything.',
+    'BoopBot has achieved maximum boop.'
+  ];
+  brainpowerFlavor.textContent = flavors[Math.floor(learningLevel() / 2)];
 }
 
 function armSmartBotImperfectMove() {
@@ -513,6 +620,29 @@ function animateConfetti() {
   else ctx.clearRect(0, 0, innerWidth, innerHeight);
 }
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
+async function configureServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+      const scriptURL = new URL('./service-worker.js', window.location.href).href;
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      let removed = false;
+      for (const registration of registrations) {
+        const workers = [registration.active, registration.waiting, registration.installing];
+        if (workers.some(worker => worker?.scriptURL === scriptURL)) {
+          removed = await registration.unregister() || removed;
+        }
+      }
+      // Reload once to release the old controller and obtain current files.
+      if (removed && navigator.serviceWorker.controller?.scriptURL === scriptURL) {
+        window.location.reload();
+      }
+    } else {
+      await navigator.serviceWorker.register('./service-worker.js');
+    }
+  } catch {
+    // Offline support is optional; registration errors must not affect play.
+  }
 }
+
+window.addEventListener('load', configureServiceWorker);

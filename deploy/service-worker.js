@@ -1,4 +1,4 @@
-const CACHE = 'bippity-boop-v19';
+const CACHE = 'bippity-boop-v22';
 const ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,8 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
+  // Live development must always use current files instead of cached releases.
+  if (['localhost', '127.0.0.1', '[::1]'].includes(new URL(self.registration.scope).hostname)) return;
   const url = new URL(event.request.url);
   const assetURLs = ASSETS.map(asset => new URL(asset, self.registration.scope).href);
   if (!assetURLs.includes(url.href)) return;

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { app, sw } from './invariants.mjs';
 
-function game({ stored = null, storageThrows = false, AudioContext } = {}) {
+function game({ stored = null, learningStored = null, storage = new Map(), storageThrows = false, missingMeter = false, serviceWorker, location, AudioContext } = {}) {
   const timers = new Map();
   let nextTimer = 0;
   const element = () => ({ textContent: '', checked: false, disabled: false, style: {}, className: 'cell',
@@ -11,23 +11,25 @@ function game({ stored = null, storageThrows = false, AudioContext } = {}) {
     addEventListener(type, fn) { this.listeners[type] = fn; },
     getAttribute() { return 'Center'; }, setAttribute() {},
     getContext() { return { setTransform() {} }; } });
-  const cells = Array.from({ length: 9 }, element);
+  const cells = Array.from({ length: 9 }, (_, index) => ({ ...element(), dataset: { cell: String(index) } }));
   const elements = new Map();
   const context = vm.createContext({
+    URL,
     document: { querySelectorAll: () => cells, querySelector: id => {
+      if (missingMeter && id.startsWith('#brainpower')) return null;
       if (!elements.has(id)) elements.set(id, element());
       return elements.get(id);
     }, addEventListener() {} },
-    window: { addEventListener() {}, AudioContext,
+    window: { addEventListener() {}, AudioContext, location,
       setTimeout(fn) { timers.set(++nextTimer, fn); return nextTimer; },
       clearTimeout(id) { timers.delete(id); } },
-    navigator: {}, innerWidth: 400, innerHeight: 800,
-    localStorage: { getItem() { if (storageThrows) throw Error('unavailable'); return stored; },
-      setItem() { if (storageThrows) throw Error('unavailable'); } },
+    navigator: serviceWorker ? { serviceWorker } : {}, innerWidth: 400, innerHeight: 800,
+    localStorage: { getItem(key) { if (storageThrows) throw Error('unavailable'); return storage.has(key) ? storage.get(key) : key === 'bippity-boop-learning' ? learningStored : stored; },
+      setItem(key, value) { if (storageThrows) throw Error('unavailable'); storage.set(key, value); } },
     matchMedia: () => ({ matches: true })
   });
   vm.runInContext(app, context);
-  return { run: code => vm.runInContext(code, context), elements, timers };
+  return { run: code => vm.runInContext(code, context), elements, cells, timers, storage };
 }
 
 for (const reset of ['startNewRound()', "resetScoreButton.listeners.click()"] ) {
@@ -63,11 +65,12 @@ test('storage failures do not interrupt scoring or resets', () => {
   assert.equal(g.run('score.draws'), 0);
 });
 
-test('basic bot wins before blocking and blocks before positional randomness', () => {
+test('learned bot wins before blocking and blocks before positional preferences', () => {
   const g = game();
-  assert.equal(g.run("basicMove(['O','O','','X','X','','','',''])"), 2);
-  assert.equal(g.run("basicMove(['X','X','','','O','','','',''])"), 2);
-  assert.equal(g.run("Math.random = () => 0.5; basicMove(['X','','','','','','','',''])"), 4);
+  for (const level of [6, 8, 10, 12, 14]) {
+    assert.equal(g.run(`chooseLearningMove(['O','O','','X','X','','','',''], ${level})`), 2);
+    assert.equal(g.run(`chooseLearningMove(['X','X','','','O','','','',''], ${level})`), 2);
+  }
 });
 
 test('pure minimax cannot lose against any human continuation or optimal tie choice', () => {
@@ -120,17 +123,17 @@ test('audio recovery replaces a context that remains interrupted', async () => {
   assert.equal(recovered.options.latencyHint, 'interactive');
 });
 
-function worker({ cached, network = async () => { throw Error('offline'); }, putThrows = false } = {}) {
+function worker({ cached, network = async () => { throw Error('offline'); }, putThrows = false, scope = 'https://example.com/game/' } = {}) {
   const handlers = {};
   const deleted = [], writes = [];
   const cache = { match: async request => cached?.(request), put: async (...args) => {
     if (putThrows) throw Error('quota'); writes.push(args);
   }, addAll: async () => {} };
   vm.runInNewContext(sw, { URL, Response, fetch: network,
-    self: { registration: { scope: 'https://example.com/game/' },
+    self: { registration: { scope },
       addEventListener: (name, fn) => { handlers[name] = fn; },
       clients: { claim: async () => {} }, skipWaiting: async () => {} },
-    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v19'],
+    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v22'],
       delete: async key => { deleted.push(key); } }
   });
   return { handlers, deleted, writes, request(path, mode = 'cors') {
@@ -175,4 +178,146 @@ test('service worker serves cached assets offline and caches successful asset re
   const online = worker({ network: async () => response });
   assert.equal(await online.request('app.js'), response);
   assert.equal(online.writes.length, 1);
+});
+
+test('capabilities unlock in stages rather than mixing random moves with minimax', () => {
+  const g = game();
+  g.run('Math.random = () => 0');
+  assert.equal(g.run("chooseLearningMove(['X','','','','','','','',''], 0)"), 1);
+  assert.equal(g.run("chooseLearningMove(['X','','','','','','','',''], 2)"), 4);
+  const win = "['O','O','','X','','','','X','']";
+  assert.equal(g.run(`chooseLearningMove(${win}, 2)`), 4);
+  assert.equal(g.run(`chooseLearningMove(${win}, 4)`), 2);
+  const block = "['X','X','','','O','','','','']";
+  assert.equal(g.run(`chooseLearningMove(${block}, 4)`), 2); // Positional tie can coincidentally block.
+  g.run('Math.random = () => 0.99');
+  assert.notEqual(g.run(`chooseLearningMove(${block}, 4)`), 2);
+  assert.equal(g.run(`chooseLearningMove(${block}, 6)`), 2);
+  g.run('Math.random = () => 0');
+  const opposite = "['X','','','','O','','','','']";
+  assert.equal(g.run(`chooseLearningMove(${opposite}, 6)`), 2);
+  assert.equal(g.run(`chooseLearningMove(${opposite}, 8)`), 8);
+});
+
+test('fork stage creates forks and defends opposite-corner forks without changing the board', () => {
+  const g = game();
+  assert.ok([2, 6].includes(g.run("chooseLearningMove(['O','','','','X','','','','O'], 10)")));
+  const move = g.run("chooseLearningMove(['X','','','','O','','','','X'], 10)");
+  assert.ok([1, 3, 5, 7].includes(move));
+  assert.equal(g.run("(() => { const state = ['X','','','','O','','','','X']; chooseLearningMove(state, 10); return JSON.stringify(state); })()"), '["X","","","","O","","","","X"]');
+});
+
+test('learning rewards outcomes once, persists, and updates the meter', () => {
+  const storage = new Map();
+  const g = game({ storage });
+  for (const [result, total] of [
+    ["{ type: 'win', player: HUMAN, line: [0,1,2] }", 1],
+    ["{ type: 'draw' }", 1.5],
+    ["{ type: 'win', player: COMPUTER, line: [0,1,2] }", 1.75]
+  ]) {
+    g.run(`finishRound(${result}); finishRound(${result})`);
+    assert.equal(g.run('learningPoints'), total);
+    g.run('startNewRound()');
+  }
+  assert.equal(storage.get('bippity-boop-learning'), '1.75');
+  assert.equal(game({ storage }).run('learningPoints'), 1.75);
+  assert.equal(g.elements.get('#brainpowerValue').textContent, '3%');
+});
+
+test('learning caps at maximum and the active game keeps its starting level', () => {
+  const g = game({ learningStored: '55.75' });
+  assert.equal(g.run('roundLearningLevel'), 13);
+  g.run("finishRound({ type: 'draw' })");
+  assert.equal(g.run('learningPoints'), 56);
+  assert.equal(g.run('roundLearningLevel'), 13);
+  assert.equal(g.elements.get('#brainpowerValue').textContent, '100%');
+  g.run('startNewRound()');
+  assert.equal(g.run('roundLearningLevel'), 14);
+  assert.match(g.elements.get('#brainpowerFlavor').textContent, /maximum boop/);
+});
+
+test('invalid stored learning starts at zero; excessive learning is capped', () => {
+  for (const learningStored of ['null', '"20"', '-1', '{}', 'true', '1e400', '{bad']) {
+    assert.equal(game({ learningStored }).run('learningPoints'), 0);
+  }
+  assert.equal(game({ learningStored: '200' }).run('learningPoints'), 56);
+});
+
+test('Bonk clears scores, learning, board and meter persistently while preserving Sound', () => {
+  const g = game({ learningStored: '30', stored: '{"human":5,"computer":3,"draws":2}' });
+  g.elements.get('#soundToggle').checked = true;
+  g.run('humanMove(0); resetScoreButton.listeners.click()');
+  assert.equal(g.run('learningPoints'), 0);
+  assert.equal(g.run('roundLearningLevel'), 0);
+  assert.equal(g.run('score.human + score.computer + score.draws'), 0);
+  assert.equal(g.run('board.every(value => !value)'), true);
+  assert.equal(g.elements.get('#brainpowerValue').textContent, '0%');
+  assert.equal(g.elements.get('#soundToggle').checked, true);
+  assert.match(g.elements.get('#status').textContent, /BONK!/);
+  assert.equal(game({ storage: g.storage }).run('learningPoints'), 0);
+});
+
+test('New game preserves learning and scores, including when storage is unavailable', () => {
+  const g = game({ storageThrows: true });
+  g.run("finishRound({ type: 'draw' }); startNewRound()");
+  assert.equal(g.run('learningPoints'), 0.5);
+  assert.equal(g.run('score.draws'), 1);
+  g.run('resetScoreButton.listeners.click()');
+  assert.equal(g.run('learningPoints'), 0);
+});
+
+test('maximum brainpower ignores armed imperfections and picks an optimal move', () => {
+  const g = game({ learningStored: '56' });
+  g.run('smartBotImperfectMovePending = true; Math.random = () => 0');
+  assert.equal(g.run("chooseLearningMove(['X','X','','O','','','','',''])"), 2);
+  assert.equal(g.run('smartBotImperfectMoveUsed'), false);
+  assert.equal(g.run(`(() => {
+    const state = ['X','','','','O','','','','X'];
+    const moves = analyzeComputerMoves(state);
+    const selected = chooseLearningMove(state);
+    return moves.find(move => move.index === selected).score === Math.max(...moves.map(move => move.score));
+  })()`), true);
+});
+
+test('old cached HTML without the meter still attaches playable tile handlers', () => {
+  const g = game({ missingMeter: true });
+  g.cells[0].listeners.click();
+  assert.equal(g.run('board[0]'), 'X');
+  g.timers.get(g.run('computerMoveTimer'))();
+  assert.equal(g.run("board.filter(value => value === 'O').length"), 1);
+  assert.equal(g.run('computerThinking'), false);
+});
+
+test('localhost workers bypass cached responses', () => {
+  for (const host of ['localhost', '127.0.0.1', '[::1]']) {
+    const w = worker({ scope: `http://${host}:8080/` });
+    assert.equal(w.request('app.js'), undefined);
+  }
+});
+
+test('local preview unregisters only its own worker and reloads once to release it', async () => {
+  const scriptURL = 'http://localhost:8080/service-worker.js';
+  let unregistered = 0, reloads = 0;
+  const serviceWorker = {
+    controller: { scriptURL },
+    async getRegistrations() { return [
+      { active: { scriptURL }, async unregister() { unregistered++; return true; } },
+      { active: { scriptURL: 'http://localhost:8080/other/worker.js' }, async unregister() { throw Error('unrelated worker'); } }
+    ]; },
+    async register() { throw Error('must not register locally'); }
+  };
+  const g = game({ serviceWorker, location: { hostname: 'localhost', href: 'http://localhost:8080/', reload() { reloads++; } } });
+  await g.run('configureServiceWorker()');
+  assert.equal(unregistered, 1);
+  assert.equal(reloads, 1);
+  serviceWorker.getRegistrations = async () => [];
+  await g.run('configureServiceWorker()');
+  assert.equal(reloads, 1);
+});
+
+test('production still registers its offline worker', async () => {
+  let registered;
+  const g = game({ serviceWorker: { async register(url) { registered = url; } }, location: { hostname: 'game.example' } });
+  await g.run('configureServiceWorker()');
+  assert.equal(registered, './service-worker.js');
 });

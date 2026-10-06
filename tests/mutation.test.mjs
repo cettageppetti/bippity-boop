@@ -4,6 +4,18 @@ import { invariantFailures, html, app, sw, css } from './invariants.mjs';
 
 const mutants = [
   {
+    name: 'Sound control disappears',
+    htmlSource: html.replace('id="soundToggle"', 'id="removedSound"')
+  },
+  {
+    name: 'brainpower meter loses accessibility',
+    htmlSource: html.replace('role="progressbar"', '')
+  },
+  {
+    name: 'Bonk action reverts to score-only wording',
+    htmlSource: html.replace('><span class="bonk-icon" aria-hidden="true">🥊</span> Bonk BoopBot</button>', '>Reset score</button>')
+  },
+  {
     name: 'subtitle loses its emoji icons',
     htmlSource: html.replace('Play as the <strong>🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>.', 'Play as the <strong>unicorn</strong> against <strong>BoopBot</strong>.'),
     appSource: app, swSource: sw, cssSource: css
@@ -62,15 +74,15 @@ const mutants = [
     appSource: app, swSource: sw, cssSource: css
   },
   {
-    name: 'basic bot regresses to pure random play',
+    name: 'progressive bot regresses to pure random play',
     htmlSource: html,
-    appSource: app.replace('index = basicMove(board);', 'index = randomChoice(available);'),
+    appSource: app.replace('const index = chooseLearningMove(board);', 'const index = randomChoice(emptySquares(board));'),
     swSource: sw, cssSource: css
   },
   {
     name: 'smart bot regresses to per-move random blunders',
     htmlSource: html,
-    appSource: app.replace('    index = chooseSmartMove(board);', '    index = Math.random() < 0.15 ? randomChoice(available) : bestMove(board);'),
+    appSource: app.replace('  if (level >= 12) return chooseSmartMove(state);', '  if (level >= 12) return Math.random() < 0.15 ? randomChoice(emptySquares(state)) : chooseSmartMove(state);'),
     swSource: sw, cssSource: css
   },
   {

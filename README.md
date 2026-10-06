@@ -11,7 +11,7 @@ cd bippity-boop
 python3 -m http.server 8080 --bind 127.0.0.1 --directory deploy
 ```
 
-Then open http://localhost:8080.
+Then open http://localhost:8080. Local previews bypass service-worker caching so refreshes show current files; deployed builds retain offline caching.
 
 ## Install on a phone
 
@@ -23,10 +23,11 @@ Deploy the `deploy/` folder to any HTTPS static host (Cloudflare Pages, Netlify,
 ## Features
 
 - Human vs. computer tic-tac-toe
-- Smart minimax computer with a small playful imperfection rate
-- Optional easier tactical bot mode
+- BoopBot learns actual strategies as you play, from random moves to perfect minimax
+- Colorful brainpower meter with persistent learning
+- Bonk BoopBot to reset scores and learning
 - Synthesized bip/boop sounds; no audio files required
-- Persistent score via localStorage
+- Persistent scores and learning via localStorage
 - Win confetti and short sound jingles
 - Responsive layout and accessible buttons/status text
 - Web app manifest and offline service worker
@@ -41,3 +42,11 @@ npm test
 ```
 
 The regression suite locks the unicorn/BoopBot subtitle, unicorn/robot display mapping, PWA asset cache, and Web Audio recovery behavior. The mutation suite deliberately breaks those invariants and verifies the tests detect the changes.
+
+## Teaching BoopBot
+
+BoopBot starts by guessing. A human win earns 1 learning point, a draw earns 0.5, and a BoopBot win earns 0.25. Brainpower reaches 100% at 56 points. Abandoned games earn nothing; New game keeps scores and learning. Existing scores are preserved, while learning starts at zero on first use.
+
+Every 4 points advances one level. Capabilities unlock at levels 2 (center/corners), 4 (immediate wins), 6 (blocking), 8 (opposite corners), and 10 (fork creation/defense). Levels 12–13 use minimax with a 12% per-game chance of one intentional weaker choice, while always taking immediate wins and blocking immediate losses. Level 14 uses full minimax without intentional mistakes. Each game keeps its starting level; earned capabilities apply to the next game.
+
+The Sound control remains available. **🥊 Bonk BoopBot** resets both scores and learning and starts a fresh game. The learning values are stored separately from scores and survive reloads when localStorage is available.

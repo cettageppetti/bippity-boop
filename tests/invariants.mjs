@@ -36,18 +36,20 @@ function invariantFailures({ htmlSource = html, appSource = app, swSource = sw, 
 
   if (/soundToggle\.checked\s*=\s*false/.test(appSource)) failures.push('gameplay must never programmatically turn sound off');
 
-  if (!appSource.includes('index = basicMove(board);')) failures.push('basic bot must use its tactical strategy instead of pure random play');
-  if (!appSource.includes('const winningMove = findImmediateMove(state, COMPUTER);')) failures.push('basic bot must take immediate winning moves');
-  if (!appSource.includes('const blockingMove = findImmediateMove(state, HUMAN);')) failures.push('basic bot must block immediate human wins');
-  if (!appSource.includes('if (!state[4]) return 4;')) failures.push('basic bot should prefer the center when no tactic is urgent');
-  if (!appSource.includes('if (Math.random() < 0.2) return randomChoice(available);')) failures.push('basic bot must retain a small imperfection rate');
+  if (!appSource.includes('const index = chooseLearningMove(board);')) failures.push('bot must use progressive capabilities');
+  if (htmlSource.includes('id="smartToggle"')) failures.push('fixed difficulty toggle must be replaced');
+  if (!htmlSource.includes('id="soundToggle"')) failures.push('Sound control must remain');
+  if (!htmlSource.includes('role="progressbar"') || !htmlSource.includes('BoopBot Brainpower')) failures.push('brainpower meter must be accessible');
+  if (!htmlSource.includes('><span class="bonk-icon" aria-hidden="true">🥊</span> Bonk BoopBot</button>')) failures.push('Bonk reset must remain');
+  if (!appSource.includes('const win = findImmediateMove(state, COMPUTER);')) failures.push('learned bot must take immediate wins');
+  if (!appSource.includes('const block = findImmediateMove(state, HUMAN);')) failures.push('learned bot must block immediate losses');
 
   if (!appSource.includes('const SMART_BOT_IMPERFECTION_RATE = 0.12;')) failures.push('smart bot must keep a per-game imperfection rate');
   if (!appSource.includes('function armSmartBotImperfectMove()')) failures.push('smart bot must arm its imperfection state per game');
   if (!appSource.includes('smartBotImperfectMovePending = Math.random() < SMART_BOT_IMPERFECTION_RATE;')) failures.push('smart bot imperfection must be scheduled per game');
   if (!appSource.includes('if (smartBotImperfectMovePending && !smartBotImperfectMoveUsed)')) failures.push('smart bot must allow at most one intentional imperfect move per game');
   if (!appSource.includes('smartBotImperfectMoveUsed = true;')) failures.push('smart bot must mark its single imperfect move as consumed');
-  if (!appSource.includes('index = chooseSmartMove(board);')) failures.push('smart bot must route move selection through chooseSmartMove');
+  if (!appSource.includes('if (level >= 12) return chooseSmartMove(state);')) failures.push('smart bot must route move selection through chooseSmartMove');
   if (/Math\.random\(\)\s*<\s*0\.15\s*\?\s*randomChoice\(available\)\s*:\s*bestMove\(board\)/.test(appSource)) failures.push('smart bot must not use per-move random blunders');
 
   const finishStart = appSource.indexOf('function finishRound(result)');
