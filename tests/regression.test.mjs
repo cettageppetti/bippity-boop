@@ -7,7 +7,7 @@ test('UI and gameplay regression invariants hold', () => {
 });
 
 test('service worker cache is bumped for this release', () => {
-  assert.match(sw, /const CACHE = 'bippity-boop-v24';/);
+  assert.match(sw, /const CACHE = 'bippity-boop-v29';/);
 });
 
 test('score cards show the robot and retain matching label weight', () => {
@@ -15,4 +15,9 @@ test('score cards show the robot and retain matching label weight', () => {
   assert.match(css, /\.score-pill\s*\{[^}]*font-weight:\s*800;/);
   const avatarRule = css.match(/\.avatar-button\s*\{([^}]*)\}/)[1];
   assert.doesNotMatch(avatarRule, /font(?:-weight)?:/);
+});
+
+test('browser loads the app as a module and caches its engine dependency', () => {
+  assert.match(html, /<script src="app.js" type="module"><\/script>/);
+  assert.ok(sw.includes("'./game-engine.mjs'"));
 });

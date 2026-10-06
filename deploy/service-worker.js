@@ -1,9 +1,14 @@
-const CACHE = 'bippity-boop-v24';
+const CACHE = 'bippity-boop-v29';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './app.js',
+  './game-engine.mjs',
+  './profile.mjs',
+  './confetti.mjs',
+  './pwa.mjs',
+  './audio.mjs',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'

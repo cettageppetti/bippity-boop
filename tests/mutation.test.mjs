@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { invariantFailures, html, app, sw, css } from './invariants.mjs';
+import { invariantFailures, html, app, audio, sw, css } from './invariants.mjs';
 
 const mutants = [
   {
@@ -31,37 +31,37 @@ const mutants = [
   {
     name: 'interactive latency hint disappears',
     htmlSource: html,
-    appSource: app.replace("{ latencyHint: 'interactive' }", '{}'),
+    audioSource: audio.replace("{ latencyHint: 'interactive' }", '{}'),
     swSource: sw, cssSource: css
   },
   {
     name: 'iOS touch unlock disappears',
     htmlSource: html,
-    appSource: app.replace("document.addEventListener('touchstart', unlockAudioFromUserGesture, { passive: true, capture: true });", ''),
+    audioSource: audio.replace("document.addEventListener('touchstart', unlockAudioFromUserGesture, { passive: true, capture: true });", ''),
     swSource: sw, cssSource: css
   },
   {
     name: 'resume is no longer awaited',
     htmlSource: html,
-    appSource: app.replaceAll('await audioContext.resume();', 'audioContext.resume();'),
+    audioSource: audio.replaceAll('await audioContext.resume();', 'audioContext.resume();'),
     swSource: sw, cssSource: css
   },
   {
     name: 'background no longer resets audio context',
     htmlSource: html,
-    appSource: app.replace("if (document.visibilityState === 'hidden') void resetAudioContext();", ''),
+    audioSource: audio.replace("if (document.visibilityState === 'hidden') void resetAudioContext();", ''),
     swSource: sw, cssSource: css
   },
   {
     name: 'Web Audio node cleanup disappears',
     htmlSource: html,
-    appSource: app.replace('    oscillator.disconnect();\n    gainNode.disconnect();', ''),
+    audioSource: audio.replace(/oscillator\.disconnect\(\);\s*gainNode\.disconnect\(\);/, ''),
     swSource: sw, cssSource: css
   },
   {
     name: 'HTMLAudio latency path returns',
     htmlSource: html,
-    appSource: app.replace('let audioContext = null;', 'let audioContext = null;\nconst fallbackAudio = new Audio();'),
+    audioSource: audio.replace('let audioContext = null;', 'let audioContext = null;\nconst fallbackAudio = new Audio();'),
     swSource: sw, cssSource: css
   },
   {
@@ -80,24 +80,6 @@ const mutants = [
     name: 'button wording regresses to New round',
     htmlSource: html.replace('>New game</button>', '>New round</button>'),
     appSource: app, swSource: sw, cssSource: css
-  },
-  {
-    name: 'progressive bot regresses to pure random play',
-    htmlSource: html,
-    appSource: app.replace('const index = chooseLearningMove(board);', 'const index = randomChoice(emptySquares(board));'),
-    swSource: sw, cssSource: css
-  },
-  {
-    name: 'smart bot regresses to per-move random blunders',
-    htmlSource: html,
-    appSource: app.replace('  if (level >= 12) return chooseSmartMove(state);', '  if (level >= 12) return Math.random() < 0.15 ? randomChoice(emptySquares(state)) : chooseSmartMove(state);'),
-    swSource: sw, cssSource: css
-  },
-  {
-    name: 'smart bot can use multiple intentional blunders',
-    htmlSource: html,
-    appSource: app.replace('if (smartBotImperfectMovePending && !smartBotImperfectMoveUsed)', 'if (smartBotImperfectMovePending)'),
-    swSource: sw, cssSource: css
   },
   {
     name: 'blank tile highlight overlay returns',

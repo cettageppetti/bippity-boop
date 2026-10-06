@@ -55,3 +55,13 @@ The Sound control remains available. **🥊 Bonk BoopBot** resets both scores an
 ## Player avatars
 
 Tap the **You** score card to choose 🦄 🐲 🐱 🦊 🐸 👻 👽 or 🐙. Your choice updates the subtitle, existing and future player pieces, accessible tile names, and victory messages. BoopBot stays 🤖. New game and Bonk preserve your avatar. Use Escape or tap outside the picker to close it. PWA install icons keep the original unicorn.
+
+## Code organization
+
+`deploy/game-engine.mjs` contains game rules, minimax, progressive strategies, and shared learning settings. It has no DOM, storage, or audio dependencies. Each bot instance owns its per-game imperfection state; tests can supply deterministic randomness.
+
+`deploy/profile.mjs` defines the avatar catalog and persistence adapter, with validation and fallback behavior tested independently.
+
+`deploy/app.js` is the browser module that coordinates game state, UI, storage, audio, and PWA setup. Round state is grouped into one object. Storage helpers preserve the existing score, learning, and avatar keys and formats; each loader retains its own validation. Shared renderers keep tile pieces and score-card accessibility labels consistent. All browser modules are included in the service-worker asset cache. No build step or runtime dependencies are required.
+
+`deploy/confetti.mjs` owns canvas sizing, particles, animation frames, and reduced-motion behavior. `deploy/pwa.mjs` owns installation prompts and worker registration, including the localhost bypass. Both accept their browser dependencies explicitly for direct tests. `deploy/audio.mjs` owns Web Audio context recovery, gesture/lifecycle hooks, synthesized tones, and jingles. The controller calls its small API; the existing recovery architecture and sound timing are preserved.
