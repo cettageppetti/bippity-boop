@@ -17,7 +17,7 @@
       <div>
         <p class="eyebrow">TIC · TAC · TOE · BUT SILLY</p>
         <h1>Bippity-<span>Boop</span></h1>
-        <p class="subtitle">Play as the <strong id="subtitleAvatar">🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>. Every move gets a tiny synthesized <em>bip</em> or <em>boop</em>.</p>
+        <p class="subtitle">Play as the <strong id="subtitleAvatar">🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>.</p>
       </div>
       <button id="installButton" class="install-button" hidden>Install app</button>
     </header>
@@ -46,9 +46,10 @@
       <div class="status-wrap">
         <p id="status" class="status" aria-live="polite">Your move. Pick a square.</p>
         <div class="controls">
-          <label class="toggle">
-            <input id="soundToggle" type="checkbox" checked />
-            <span>Sound</span>
+          <label class="toggle sound-toggle">
+            <input id="soundToggle" type="checkbox" aria-label="Sound" checked />
+            <span class="sound-on" aria-hidden="true">🔊</span>
+            <span class="sound-off" aria-hidden="true">🔇</span>
           </label>
         </div>
       </div>

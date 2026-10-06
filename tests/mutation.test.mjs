@@ -4,6 +4,18 @@ import { invariantFailures, html, app, audio, sw, css } from './invariants.mjs';
 
 const mutants = [
   {
+    name: 'long sound explanation returns to subtitle',
+    htmlSource: html.replace('</strong>.</p>', '</strong>. Every move gets a tiny synthesized bip or boop.</p>')
+  },
+  {
+    name: 'speaker control loses accessible name',
+    htmlSource: html.replace('aria-label="Sound"', '')
+  },
+  {
+    name: 'muted speaker state disappears',
+    htmlSource: html.replace('class="sound-off"', 'class="removed"')
+  },
+  {
     name: 'avatar picker disappears',
     htmlSource: html.replace('id="avatarPicker"', 'id="removedPicker"')
   },

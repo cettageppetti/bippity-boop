@@ -38,6 +38,8 @@ function invariantFailures({ htmlSource = html, appSource = app, audioSource = a
   if (/soundToggle\.checked\s*=\s*false/.test(audioSource + appSource)) failures.push('gameplay must never programmatically turn sound off');
 
   if (htmlSource.includes('id="smartToggle"')) failures.push('fixed difficulty toggle must be replaced');
+  if (htmlSource.includes('Every move gets a tiny synthesized')) failures.push('subtitle must stay compact');
+  if (!htmlSource.includes('aria-label="Sound"') || !htmlSource.includes('class="sound-on" aria-hidden="true">🔊') || !htmlSource.includes('class="sound-off" aria-hidden="true">🔇')) failures.push('speaker toggle must retain accessible name and both sound states');
   if (!htmlSource.includes('id="soundToggle"')) failures.push('Sound control must remain');
   if (!htmlSource.includes('role="progressbar"') || !htmlSource.includes('BoopBot Brainpower')) failures.push('brainpower meter must be accessible');
   if (!htmlSource.includes('><span class="bonk-icon" aria-hidden="true">🥊</span> Bonk BoopBot</button>')) failures.push('Bonk reset must remain');
