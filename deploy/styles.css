@@ -455,3 +455,37 @@ h1 span {
   font-size: 1.6em;
   line-height: 1;
 }
+
+.avatar-button { color: inherit; cursor: pointer; }
+.score-label { display: inline-flex; align-items: center; gap: .3em; }
+.score-pill .score-avatar { font-size: 1.35em; line-height: 1; }
+.avatar-chevron { font-size: .75em; }
+.avatar-picker {
+  position: relative;
+  z-index: 2;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: var(--panel-2);
+}
+.avatar-picker[hidden] { display: none; }
+.avatar-picker p { margin: 0 0 8px; font-size: .85rem; color: var(--muted); }
+.avatar-options { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.avatar-option {
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 2px;
+  font-size: 1.7rem;
+  line-height: 1;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  color: var(--ink);
+  background: rgba(255,255,255,.06);
+  cursor: pointer;
+}
+.avatar-option[aria-pressed="true"] { border-color: var(--aqua); background: rgba(34,223,210,.12); }
+.avatar-button:focus-visible, .avatar-option:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+@media (max-width: 420px) {
+  .avatar-options { grid-template-columns: repeat(4, 1fr); }
+}

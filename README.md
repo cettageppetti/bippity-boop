@@ -23,6 +23,7 @@ Deploy the `deploy/` folder to any HTTPS static host (Cloudflare Pages, Netlify,
 ## Features
 
 - Human vs. computer tic-tac-toe
+- Tap the You score card to choose a persistent player avatar
 - BoopBot learns actual strategies as you play, from random moves to perfect minimax
 - Colorful brainpower meter with persistent learning
 - Bonk BoopBot to reset scores and learning
@@ -50,3 +51,7 @@ BoopBot starts by guessing. A human win earns 1 learning point, a draw earns 0.5
 Every 4 points advances one level. Capabilities unlock at levels 2 (center/corners), 4 (immediate wins), 6 (blocking), 8 (opposite corners), and 10 (fork creation/defense). Levels 12–13 use minimax with a 12% per-game chance of one intentional weaker choice, while always taking immediate wins and blocking immediate losses. Level 14 uses full minimax without intentional mistakes. Each game keeps its starting level; earned capabilities apply to the next game.
 
 The Sound control remains available. **🥊 Bonk BoopBot** resets both scores and learning and starts a fresh game. The learning values are stored separately from scores and survive reloads when localStorage is available.
+
+## Player avatars
+
+Tap the **You** score card to choose 🦄 🐲 🐱 🦊 🐸 👻 👽 or 🐙. Your choice updates the subtitle, existing and future player pieces, accessible tile names, and victory messages. BoopBot stays 🤖. New game and Bonk preserve your avatar. Use Escape or tap outside the picker to close it. PWA install icons keep the original unicorn.

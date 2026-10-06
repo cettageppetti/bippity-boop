@@ -17,17 +17,31 @@
       <div>
         <p class="eyebrow">TIC · TAC · TOE · BUT SILLY</p>
         <h1>Bippity-<span>Boop</span></h1>
-        <p class="subtitle">Play as the <strong>🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>. Every move gets a tiny synthesized <em>bip</em> or <em>boop</em>.</p>
+        <p class="subtitle">Play as the <strong id="subtitleAvatar">🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>. Every move gets a tiny synthesized <em>bip</em> or <em>boop</em>.</p>
       </div>
       <button id="installButton" class="install-button" hidden>Install app</button>
     </header>
 
     <section class="game-card" aria-label="Bippity-Boop tic tac toe game">
       <div class="score-row" aria-label="Score">
-        <div class="score-pill player-score"><span>You</span><strong id="playerScore">0</strong></div>
+        <button id="avatarButton" class="score-pill player-score avatar-button" type="button" aria-label="You, unicorn. Change avatar" aria-expanded="false" aria-controls="avatarPicker"><span class="score-label"><span id="playerAvatar" class="score-avatar" aria-hidden="true">🦄</span> You <span class="avatar-chevron" aria-hidden="true">▾</span></span><strong id="playerScore">0</strong></button>
         <div class="score-pill draws-score"><span>Draws</span><strong id="drawScore">0</strong></div>
-        <div class="score-pill computer-score"><span>BoopBot</span><strong id="computerScore">0</strong></div>
+        <div class="score-pill computer-score"><span class="score-label"><span class="score-avatar" aria-hidden="true">🤖</span> BoopBot</span><strong id="computerScore">0</strong></div>
       </div>
+
+      <section id="avatarPicker" class="avatar-picker" aria-label="Choose your avatar" hidden>
+        <p>Pick your player</p>
+        <div class="avatar-options">
+          <button class="avatar-option" type="button" data-avatar="🦄" aria-label="Unicorn" aria-pressed="true">🦄</button>
+          <button class="avatar-option" type="button" data-avatar="🐲" aria-label="Dragon" aria-pressed="false">🐲</button>
+          <button class="avatar-option" type="button" data-avatar="🐱" aria-label="Cat" aria-pressed="false">🐱</button>
+          <button class="avatar-option" type="button" data-avatar="🦊" aria-label="Fox" aria-pressed="false">🦊</button>
+          <button class="avatar-option" type="button" data-avatar="🐸" aria-label="Frog" aria-pressed="false">🐸</button>
+          <button class="avatar-option" type="button" data-avatar="👻" aria-label="Ghost" aria-pressed="false">👻</button>
+          <button class="avatar-option" type="button" data-avatar="👽" aria-label="Alien" aria-pressed="false">👽</button>
+          <button class="avatar-option" type="button" data-avatar="🐙" aria-label="Octopus" aria-pressed="false">🐙</button>
+        </div>
+      </section>
 
       <div class="status-wrap">
         <p id="status" class="status" aria-live="polite">Your move. Pick a square.</p>

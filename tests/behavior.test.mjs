@@ -1,35 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { app, sw } from './invariants.mjs';
+import { app, sw, html } from './invariants.mjs';
 
-function game({ stored = null, learningStored = null, storage = new Map(), storageThrows = false, missingMeter = false, serviceWorker, location, AudioContext } = {}) {
+function game({ stored = null, learningStored = null, avatarStored = null, storage = new Map(), storageThrows = false, missingMeter = false, serviceWorker, location, AudioContext } = {}) {
   const timers = new Map();
   let nextTimer = 0;
-  const element = () => ({ textContent: '', checked: false, disabled: false, style: {}, className: 'cell',
+  const documentListeners = {};
+  const element = () => ({ attributes: {}, hidden: true, focus() { this.focused = true; }, contains(target) { return target === this; }, textContent: '', checked: false, disabled: false, style: {}, className: 'cell',
     classList: { add() {}, remove() {} }, listeners: {},
     addEventListener(type, fn) { this.listeners[type] = fn; },
-    getAttribute() { return 'Center'; }, setAttribute() {},
+    getAttribute(key) { return this.attributes[key] || 'Center'; }, setAttribute(key, value) { this.attributes[key] = value; },
     getContext() { return { setTransform() {} }; } });
   const cells = Array.from({ length: 9 }, (_, index) => ({ ...element(), dataset: { cell: String(index) } }));
+  const options = ['🦄','🐲','🐱','🦊','🐸','👻','👽','🐙'].map(emoji => ({ ...element(), dataset: { avatar: emoji } }));
   const elements = new Map();
   const context = vm.createContext({
     URL,
-    document: { querySelectorAll: () => cells, querySelector: id => {
-      if (missingMeter && id.startsWith('#brainpower')) return null;
+    document: { querySelectorAll: selector => selector === '.cell' ? cells : options, querySelector: id => {
+      if (!html.includes(`id="${id.slice(1)}"`) || (missingMeter && id.startsWith('#brainpower'))) return null;
       if (!elements.has(id)) elements.set(id, element());
       return elements.get(id);
-    }, addEventListener() {} },
+    }, addEventListener(type, fn) { documentListeners[type] = fn; } },
     window: { addEventListener() {}, AudioContext, location,
       setTimeout(fn) { timers.set(++nextTimer, fn); return nextTimer; },
       clearTimeout(id) { timers.delete(id); } },
     navigator: serviceWorker ? { serviceWorker } : {}, innerWidth: 400, innerHeight: 800,
-    localStorage: { getItem(key) { if (storageThrows) throw Error('unavailable'); return storage.has(key) ? storage.get(key) : key === 'bippity-boop-learning' ? learningStored : stored; },
+    localStorage: { getItem(key) { if (storageThrows) throw Error('unavailable'); return storage.has(key) ? storage.get(key) : key === 'bippity-boop-learning' ? learningStored : key === 'bippity-boop-avatar' ? avatarStored : stored; },
       setItem(key, value) { if (storageThrows) throw Error('unavailable'); storage.set(key, value); } },
     matchMedia: () => ({ matches: true })
   });
   vm.runInContext(app, context);
-  return { run: code => vm.runInContext(code, context), elements, cells, timers, storage };
+  return { run: code => vm.runInContext(code, context), elements, cells, options, documentListeners, timers, storage };
 }
 
 for (const reset of ['startNewRound()', "resetScoreButton.listeners.click()"] ) {
@@ -133,7 +135,7 @@ function worker({ cached, network = async () => { throw Error('offline'); }, put
     self: { registration: { scope },
       addEventListener: (name, fn) => { handlers[name] = fn; },
       clients: { claim: async () => {} }, skipWaiting: async () => {} },
-    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v22'],
+    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v24'],
       delete: async key => { deleted.push(key); } }
   });
   return { handlers, deleted, writes, request(path, mode = 'cors') {
@@ -320,4 +322,75 @@ test('production still registers its offline worker', async () => {
   const g = game({ serviceWorker: { async register(url) { registered = url; } }, location: { hostname: 'game.example' } });
   await g.run('configureServiceWorker()');
   assert.equal(registered, './service-worker.js');
+});
+
+test('all avatar choices update the score card, subtitle, current pieces and future moves', () => {
+  const g = game();
+  g.run('placePiece(0, HUMAN); placePiece(1, COMPUTER)');
+  for (const [emoji, name] of [['🦄','unicorn'],['🐲','dragon'],['🐱','cat'],['🦊','fox'],['🐸','frog'],['👻','ghost'],['👽','alien'],['🐙','octopus']]) {
+    g.run(`selectAvatar('${emoji}')`);
+    assert.equal(g.elements.get('#playerAvatar').textContent, emoji);
+    assert.equal(g.elements.get('#subtitleAvatar').textContent, `${emoji} ${name}`);
+    assert.equal(g.cells[0].textContent, emoji);
+    assert.equal(g.cells[0].attributes['aria-label'], `Top left, ${name}`);
+    assert.equal(g.cells[1].textContent, '🤖');
+    assert.equal(g.options.filter(option => option.attributes['aria-pressed'] === 'true').length, 1);
+    assert.equal(g.storage.get('bippity-boop-avatar'), emoji);
+  }
+  g.run('placePiece(2, HUMAN)');
+  assert.equal(g.cells[2].textContent, '🐙');
+  assert.equal(g.run('board[0]'), 'X');
+  assert.equal(g.run('board[1]'), 'O');
+});
+
+test('avatar picker opens from the score card, focuses selection and closes on selection or Escape', () => {
+  const g = game();
+  const trigger = g.elements.get('#avatarButton');
+  const picker = g.elements.get('#avatarPicker');
+  trigger.listeners.click();
+  assert.equal(picker.hidden, false);
+  assert.equal(trigger.attributes['aria-expanded'], 'true');
+  assert.equal(g.options[0].focused, true);
+  g.options[3].listeners.click();
+  assert.equal(g.run('selectedAvatar.emoji'), '🦊');
+  assert.equal(picker.hidden, true);
+  assert.equal(trigger.focused, true);
+  trigger.listeners.click();
+  g.documentListeners.keydown({ key: 'Escape' });
+  assert.equal(picker.hidden, true);
+  assert.equal(trigger.attributes['aria-expanded'], 'false');
+  trigger.listeners.click();
+  g.documentListeners.click({ target: {} });
+  assert.equal(picker.hidden, true);
+});
+
+test('avatar survives reloads, New game and Bonk without changing learning or scores on selection', () => {
+  const g = game({ learningStored: '16', stored: '{"human":3,"computer":2,"draws":1}' });
+  g.run("selectAvatar('🐸')");
+  assert.equal(g.run('learningPoints'), 16);
+  assert.equal(g.run('score.human'), 3);
+  const reloaded = game({ storage: g.storage });
+  assert.equal(reloaded.elements.get('#subtitleAvatar').textContent, '🐸 frog');
+  g.run('startNewRound(); resetScoreButton.listeners.click()');
+  assert.equal(g.run('selectedAvatar.emoji'), '🐸');
+  assert.equal(game({ storage: g.storage }).run('selectedAvatar.emoji'), '🐸');
+});
+
+test('invalid or unavailable avatar storage defaults safely and selection works without storage', () => {
+  for (const avatarStored of [null, 'X', '🤖', '{}', '<script>']) {
+    assert.equal(game({ avatarStored }).run('selectedAvatar.emoji'), '🦄');
+  }
+  const g = game({ storageThrows: true });
+  g.run("selectAvatar('👻'); selectAvatar('invalid')");
+  assert.equal(g.run('selectedAvatar.emoji'), '👻');
+});
+
+test('victory messages follow the selected avatar, including changes after a win', () => {
+  const g = game();
+  g.run("selectAvatar('🐲'); finishRound({ type: 'win', player: HUMAN, line: [0,1,2] })");
+  assert.match(g.elements.get('#status').textContent, /🐲 dragon wins/);
+  g.run("selectAvatar('👽')");
+  assert.match(g.elements.get('#status').textContent, /👽 alien wins/);
+  assert.equal(g.run('score.human'), 1);
+  assert.equal(g.run('learningPoints'), 1);
 });

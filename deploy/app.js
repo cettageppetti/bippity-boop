@@ -1,7 +1,12 @@
 const HUMAN = 'X';
 const COMPUTER = 'O';
-const DISPLAY_PIECES = { [HUMAN]: '🦄', [COMPUTER]: '🤖' };
-const PIECE_NAMES = { [HUMAN]: 'unicorn', [COMPUTER]: 'robot' };
+const AVATARS = [
+  { emoji: '🦄', name: 'unicorn' }, { emoji: '🐲', name: 'dragon' },
+  { emoji: '🐱', name: 'cat' }, { emoji: '🦊', name: 'fox' },
+  { emoji: '🐸', name: 'frog' }, { emoji: '👻', name: 'ghost' },
+  { emoji: '👽', name: 'alien' }, { emoji: '🐙', name: 'octopus' }
+];
+const CELL_NAMES = ['Top left', 'Top center', 'Top right', 'Middle left', 'Center', 'Middle right', 'Bottom left', 'Bottom center', 'Bottom right'];
 const SMART_BOT_IMPERFECTION_RATE = 0.12;
 const MAX_LEARNING_POINTS = 56;
 const POINTS_PER_LEVEL = 4;
@@ -13,6 +18,11 @@ const wins = [
 
 const cells = [...document.querySelectorAll('.cell')];
 const statusEl = document.querySelector('#status');
+const avatarButton = document.querySelector('#avatarButton');
+const avatarPicker = document.querySelector('#avatarPicker');
+const avatarOptions = [...document.querySelectorAll('.avatar-option')];
+const playerAvatarEl = document.querySelector('#playerAvatar');
+const subtitleAvatarEl = document.querySelector('#subtitleAvatar');
 const playerScoreEl = document.querySelector('#playerScore');
 const computerScoreEl = document.querySelector('#computerScore');
 const drawScoreEl = document.querySelector('#drawScore');
@@ -29,6 +39,8 @@ const ctx = confettiCanvas.getContext('2d');
 
 let board = Array(9).fill('');
 let roundOver = false;
+let roundWinner = null;
+let selectedAvatar = loadAvatar();
 let computerThinking = false;
 let computerMoveTimer = null;
 let deferredInstallPrompt = null;
@@ -42,10 +54,31 @@ let smartBotImperfectMovePending = false;
 let smartBotImperfectMoveUsed = false;
 
 renderScore();
+renderAvatar();
 renderBrainpower();
 resizeConfetti();
 window.addEventListener('resize', resizeConfetti);
 armSmartBotImperfectMove();
+
+avatarButton?.addEventListener('click', () => {
+  if (!avatarPicker) return;
+  if (avatarPicker.hidden) {
+    avatarPicker.hidden = false;
+    avatarButton.setAttribute('aria-expanded', 'true');
+    avatarOptions.find(option => option.dataset.avatar === selectedAvatar.emoji)?.focus();
+  } else {
+    closeAvatarPicker();
+  }
+});
+avatarOptions.forEach(option => option.addEventListener('click', () => selectAvatar(option.dataset.avatar)));
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && avatarPicker && !avatarPicker.hidden) closeAvatarPicker();
+});
+document.addEventListener('click', event => {
+  if (avatarPicker && !avatarPicker.hidden && !avatarPicker.contains(event.target) && !avatarButton?.contains(event.target)) {
+    closeAvatarPicker(false);
+  }
+});
 
 cells.forEach(cell => cell.addEventListener('click', () => humanMove(Number(cell.dataset.cell))));
 newRoundButton.addEventListener('click', startNewRound);
@@ -123,10 +156,10 @@ function computerMove() {
 function placePiece(index, player) {
   board[index] = player;
   const cell = cells[index];
-  cell.textContent = DISPLAY_PIECES[player];
+  cell.textContent = player === HUMAN ? selectedAvatar.emoji : '🤖';
   cell.classList.add(player.toLowerCase(), 'pop');
   cell.disabled = true;
-  cell.setAttribute('aria-label', `${cell.getAttribute('aria-label').replace(/,? (X|O|unicorn|robot)$/i, '')}, ${PIECE_NAMES[player]}`);
+  cell.setAttribute('aria-label', `${CELL_NAMES[index]}, ${player === HUMAN ? selectedAvatar.name : 'robot'}`);
   window.setTimeout(() => cell.classList.remove('pop'), 320);
   playBipBoop(player);
 }
@@ -134,6 +167,7 @@ function placePiece(index, player) {
 function finishRound(result) {
   if (roundOver) return;
   roundOver = true;
+  roundWinner = result.type === 'win' ? result.player : null;
   computerThinking = false;
   setBoardDisabled(true);
 
@@ -141,7 +175,7 @@ function finishRound(result) {
     result.line.forEach(i => cells[i].classList.add('win'));
     if (result.player === HUMAN) {
       score.human += 1;
-      statusEl.textContent = randomChoice(['BIPPITY! The unicorn wins!', 'Unicorn victory! Bip bip hooray!', 'You out-booped BoopBot!']);
+      statusEl.textContent = humanVictoryMessage();
       launchConfetti();
       victoryJingle();
     } else {
@@ -169,6 +203,8 @@ function startNewRound() {
   computerMoveTimer = null;
   board = Array(9).fill('');
   roundOver = false;
+  roundWinner = null;
+  closeAvatarPicker(false);
   computerThinking = false;
   roundLearningLevel = learningLevel();
   armSmartBotImperfectMove();
@@ -176,11 +212,7 @@ function startNewRound() {
     cell.textContent = '';
     cell.disabled = false;
     cell.className = 'cell';
-    cell.setAttribute('aria-label', [
-      'Top left', 'Top center', 'Top right',
-      'Middle left', 'Center', 'Middle right',
-      'Bottom left', 'Bottom center', 'Bottom right'
-    ][index]);
+    cell.setAttribute('aria-label', CELL_NAMES[index]);
   });
   statusEl.textContent = 'Your move. Pick a square.';
 }
@@ -546,6 +578,53 @@ function randomChoice(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+function loadAvatar() {
+  try {
+    const emoji = localStorage.getItem('bippity-boop-avatar');
+    return AVATARS.find(avatar => avatar.emoji === emoji) || AVATARS[0];
+  } catch {
+    return AVATARS[0];
+  }
+}
+
+function humanVictoryMessage() {
+  return `BIPPITY! The ${selectedAvatar.emoji} ${selectedAvatar.name} wins!`;
+}
+
+function renderAvatar() {
+  if (playerAvatarEl) playerAvatarEl.textContent = selectedAvatar.emoji;
+  if (subtitleAvatarEl) subtitleAvatarEl.textContent = `${selectedAvatar.emoji} ${selectedAvatar.name}`;
+  avatarButton?.setAttribute('aria-label', `You, ${selectedAvatar.name}, ${score.human} wins. Change avatar`);
+  avatarOptions.forEach(option => option.setAttribute('aria-pressed', String(option.dataset.avatar === selectedAvatar.emoji)));
+  board.forEach((piece, index) => {
+    if (piece === HUMAN) {
+      cells[index].textContent = selectedAvatar.emoji;
+      cells[index].setAttribute('aria-label', `${CELL_NAMES[index]}, ${selectedAvatar.name}`);
+    }
+  });
+  if (roundOver && roundWinner === HUMAN) statusEl.textContent = humanVictoryMessage();
+}
+
+function selectAvatar(emoji) {
+  const avatar = AVATARS.find(candidate => candidate.emoji === emoji);
+  if (!avatar) return;
+  selectedAvatar = avatar;
+  try {
+    localStorage.setItem('bippity-boop-avatar', avatar.emoji);
+  } catch {
+    // The selected avatar remains usable for this session.
+  }
+  renderAvatar();
+  closeAvatarPicker();
+}
+
+function closeAvatarPicker(restoreFocus = true) {
+  if (!avatarPicker) return;
+  avatarPicker.hidden = true;
+  avatarButton?.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) avatarButton?.focus();
+}
+
 function loadScore() {
   try {
     const stored = JSON.parse(localStorage.getItem('bippity-boop-score'));
@@ -564,6 +643,7 @@ function saveScore() {
   }
 }
 function renderScore() {
+  avatarButton?.setAttribute('aria-label', `You, ${selectedAvatar.name}, ${score.human} wins. Change avatar`);
   playerScoreEl.textContent = score.human;
   computerScoreEl.textContent = score.computer;
   drawScoreEl.textContent = score.draws;

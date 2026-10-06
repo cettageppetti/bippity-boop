@@ -11,11 +11,12 @@ const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
 function invariantFailures({ htmlSource = html, appSource = app, swSource = sw, cssSource = css } = {}) {
   const failures = [];
-  if (!htmlSource.includes('Play as the <strong>🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>.')) failures.push('subtitle must show unicorn and robot icons');
+  if (!htmlSource.includes('Play as the <strong id="subtitleAvatar">🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>.')) failures.push('subtitle must show unicorn and robot icons');
   if (/You’re\s*<strong>X<\/strong>|computer is\s*<strong>O<\/strong>/i.test(htmlSource)) failures.push('subtitle must not regress to X/O wording');
   if (!htmlSource.includes('>New game</button>')) failures.push('primary action button must say New game');
   if (htmlSource.includes('>New round</button>')) failures.push('New round wording must not return');
-  if (!appSource.includes("const DISPLAY_PIECES = { [HUMAN]: '🦄', [COMPUTER]: '🤖' };")) failures.push('display pieces must remain unicorn and robot');
+  if (!appSource.includes("cell.textContent = player === HUMAN ? selectedAvatar.emoji : '🤖';")) failures.push('board must show selected avatar and stable robot');
+  if (!htmlSource.includes('id="avatarButton"') || !htmlSource.includes('id="avatarPicker"')) failures.push('score card avatar picker must remain');
 
   if (!appSource.includes("let audioContext = null;")) failures.push('Web Audio context must be lazily created and replaceable');
   if (!appSource.includes("latencyHint: 'interactive'")) failures.push('Web Audio must request interactive latency');

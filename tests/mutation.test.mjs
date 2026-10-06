@@ -4,6 +4,14 @@ import { invariantFailures, html, app, sw, css } from './invariants.mjs';
 
 const mutants = [
   {
+    name: 'avatar picker disappears',
+    htmlSource: html.replace('id="avatarPicker"', 'id="removedPicker"')
+  },
+  {
+    name: 'board ignores selected avatar',
+    appSource: app.replace("cell.textContent = player === HUMAN ? selectedAvatar.emoji : '🤖';", "cell.textContent = player;")
+  },
+  {
     name: 'Sound control disappears',
     htmlSource: html.replace('id="soundToggle"', 'id="removedSound"')
   },
@@ -17,7 +25,7 @@ const mutants = [
   },
   {
     name: 'subtitle loses its emoji icons',
-    htmlSource: html.replace('Play as the <strong>🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>.', 'Play as the <strong>unicorn</strong> against <strong>BoopBot</strong>.'),
+    htmlSource: html.replace('Play as the <strong id="subtitleAvatar">🦄 unicorn</strong> against <strong>🤖 BoopBot</strong>.', 'Play as the <strong>unicorn</strong> against <strong>BoopBot</strong>.'),
     appSource: app, swSource: sw, cssSource: css
   },
   {

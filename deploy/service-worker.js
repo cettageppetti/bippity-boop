@@ -1,4 +1,4 @@
-const CACHE = 'bippity-boop-v22';
+const CACHE = 'bippity-boop-v24';
 const ASSETS = [
   './',
   './index.html',
