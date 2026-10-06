@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { invariantFailures, html, app, sw, css } from './regression.test.mjs';
+import { invariantFailures, html, app, sw, css } from './invariants.mjs';
 
 const mutants = [
   {

@@ -25,6 +25,7 @@ const ctx = confettiCanvas.getContext('2d');
 let board = Array(9).fill('');
 let roundOver = false;
 let computerThinking = false;
+let computerMoveTimer = null;
 let deferredInstallPrompt = null;
 let audioContext = null;
 let score = loadScore();
@@ -82,11 +83,12 @@ function humanMove(index) {
   ]);
 
   const delay = 350 + Math.random() * 450;
-  window.setTimeout(computerMove, delay);
+  computerMoveTimer = window.setTimeout(computerMove, delay);
 }
 
 function computerMove() {
-  if (roundOver) return;
+  computerMoveTimer = null;
+  if (roundOver || !computerThinking) return;
   const available = emptySquares(board);
   if (!available.length) return finishRound({ type: 'draw' });
 
@@ -150,6 +152,8 @@ function finishRound(result) {
 }
 
 function startNewRound() {
+  window.clearTimeout(computerMoveTimer);
+  computerMoveTimer = null;
   board = Array(9).fill('');
   roundOver = false;
   computerThinking = false;
@@ -263,12 +267,6 @@ function chooseSmartImperfectMove(moves, bestScore) {
   const candidateMoves = safeImperfectMoves.length ? safeImperfectMoves : nonBestMoves;
   const candidateScore = Math.max(...candidateMoves.map(move => move.score));
   return randomChoice(candidateMoves.filter(move => move.score === candidateScore).map(move => move.index));
-}
-
-function bestMove(state) {
-  const moves = analyzeComputerMoves(state);
-  const bestScore = Math.max(...moves.map(move => move.score));
-  return randomChoice(moves.filter(move => move.score === bestScore).map(move => move.index));
 }
 
 function minimax(state, depth, maximizing) {
@@ -443,12 +441,21 @@ function randomChoice(items) {
 
 function loadScore() {
   try {
-    return JSON.parse(localStorage.getItem('bippity-boop-score')) || { human: 0, computer: 0, draws: 0 };
+    const stored = JSON.parse(localStorage.getItem('bippity-boop-score'));
+    return Object.fromEntries(['human', 'computer', 'draws'].map(key => [
+      key, Number.isSafeInteger(stored?.[key]) && stored[key] >= 0 ? stored[key] : 0
+    ]));
   } catch {
     return { human: 0, computer: 0, draws: 0 };
   }
 }
-function saveScore() { localStorage.setItem('bippity-boop-score', JSON.stringify(score)); }
+function saveScore() {
+  try {
+    localStorage.setItem('bippity-boop-score', JSON.stringify(score));
+  } catch {
+    // Keep the current session playable when storage is unavailable or full.
+  }
+}
 function renderScore() {
   playerScoreEl.textContent = score.human;
   computerScoreEl.textContent = score.computer;
