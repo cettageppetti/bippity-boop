@@ -7,7 +7,7 @@ test('UI and gameplay regression invariants hold', () => {
 });
 
 test('service worker cache is bumped for this release', () => {
-  assert.match(sw, /const CACHE = 'bippity-boop-v32';/);
+  assert.match(sw, /const CACHE = 'bippity-boop-v33';/);
 });
 
 test('score cards show the robot and retain matching label weight', () => {
@@ -30,4 +30,13 @@ test('mobile sound control shares the status row and reflects native checkbox st
   assert.match(css, /\.sound-toggle\s*\{[^}]*width: 44px; height: 44px;/);
   assert.doesNotMatch(css, /\.status-wrap\s*\{[^}]*flex-direction: column/);
   assert.match(css, /100svh - 350px - env\(safe-area-inset-top\) - env\(safe-area-inset-bottom\)/);
+});
+
+
+test('game actions stay separated and wrap safely on narrow screens', () => {
+  const rule = css.match(/\.action-row\s*\{([^}]*)\}/)[1];
+  assert.match(rule, /justify-content: space-between;/);
+  assert.match(rule, /gap: 16px 24px;/);
+  assert.match(rule, /flex-wrap: wrap;/);
+  assert.match(rule, /width: min\(100%, 540px\);/);
 });

@@ -103,7 +103,7 @@ function worker({ cached, network = async () => { throw Error('offline'); }, put
     self: { registration: { scope },
       addEventListener: (name, fn) => { handlers[name] = fn; },
       clients: { claim: async () => {} }, skipWaiting: async () => {} },
-    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v32'],
+    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v33'],
       delete: async key => { deleted.push(key); } }
   });
   return { handlers, deleted, writes, request(path, mode = 'cors') {
