@@ -3,6 +3,14 @@ import { HUMAN, LEARNING, learningLevel } from './game-engine.mjs';
 export function createGameView({ document, window, getState, onAvatarSelect }) {
   const CELL_NAMES = ['Top left', 'Top center', 'Top right', 'Middle left', 'Center', 'Middle right', 'Bottom left', 'Bottom center', 'Bottom right'];
   const cells = [...document.querySelectorAll('.cell')];
+  const pieces = cells.map(cell => {
+    const piece = document.createElement('span');
+    piece.className = 'cell-piece';
+    piece.setAttribute('aria-hidden', 'true');
+    cell.textContent = '';
+    cell.appendChild(piece);
+    return piece;
+  });
   const statusEl = document.querySelector('#status');
   const avatarButton = document.querySelector('#avatarButton');
   const avatarPicker = document.querySelector('#avatarPicker');
@@ -94,7 +102,7 @@ export function createGameView({ document, window, getState, onAvatarSelect }) {
   function renderCellPiece(index, player) {
     const { selectedAvatar } = getState();
     const cell = cells[index];
-    cell.textContent = player === HUMAN ? selectedAvatar.emoji : '🤖';
+    pieces[index].textContent = player === HUMAN ? selectedAvatar.emoji : '🤖';
     cell.setAttribute('aria-label', `${CELL_NAMES[index]}, ${player === HUMAN ? selectedAvatar.name : 'robot'}`);
   }
 
@@ -109,7 +117,7 @@ export function createGameView({ document, window, getState, onAvatarSelect }) {
 
   function resetBoard() {
     cells.forEach((cell, index) => {
-      cell.textContent = '';
+      pieces[index].textContent = '';
       cell.disabled = false;
       cell.className = 'cell';
       cell.setAttribute('aria-label', CELL_NAMES[index]);

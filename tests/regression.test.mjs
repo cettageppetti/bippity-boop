@@ -7,7 +7,7 @@ test('UI and gameplay regression invariants hold', () => {
 });
 
 test('service worker cache is bumped for this release', () => {
-  assert.match(sw, /const CACHE = 'bippity-boop-v33';/);
+  assert.match(sw, /const CACHE = 'bippity-boop-v34';/);
 });
 
 test('score cards show the robot and retain matching label weight', () => {
@@ -39,4 +39,16 @@ test('game actions stay separated and wrap safely on narrow screens', () => {
   assert.match(rule, /gap: 16px 24px;/);
   assert.match(rule, /flex-wrap: wrap;/);
   assert.match(rule, /width: min\(100%, 540px\);/);
+});
+
+
+test('tile sizing resists emoji content and supports Safari without aspect-ratio', () => {
+  const board = css.match(/\.board\s*\{([^}]*)\}/)[1];
+  const cell = css.match(/\.cell\s*\{([^}]*)\}/)[1];
+  assert.match(board, /repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(cell, /min-width: 0;/);
+  assert.match(cell, /min-height: 0;/);
+  assert.match(cell, /padding: 0;/);
+  assert.match(css, /\.cell-piece\s*\{[^}]*position: absolute;/);
+  assert.match(css, /@supports not \(aspect-ratio: 1\)\s*\{\s*\.cell\s*\{ height: 0; padding-bottom: 100%; display: block;/);
 });

@@ -16,17 +16,17 @@ function game({ appSource = app, confettiFactory = createConfetti, stored = null
   const documentEvents = eventTarget();
   const windowEvents = eventTarget();
   let focusedElement;
-  const element = () => ({ attributes: {}, hidden: true, focus() { if (focusedElement) focusedElement.focused = false; this.focused = true; focusedElement = this; }, contains(target) { for (let node = target; node; node = node.parent) if (node === this) return true; return false; }, textContent: '', checked: false, disabled: false, style: {}, className: 'cell',
+  const element = () => ({ attributes: {}, hidden: true, focus() { if (focusedElement) focusedElement.focused = false; this.focused = true; focusedElement = this; }, contains(target) { for (let node = target; node; node = node.parent) if (node === this) return true; return false; }, appendChild(child) { this.child = child; }, get textContent() { return this.child ? this.child.textContent : (this.text || ''); }, set textContent(value) { this.text = value; this.child = null; }, checked: false, disabled: false, style: {}, className: 'cell',
     classList: { add() {}, remove() {} }, ...eventTarget(),
     click() { if (this.disabled) return; const event = { target: this }; this.listeners.click?.(event); documentEvents.listeners.click?.(event); },
     getAttribute(key) { return this.attributes[key] || 'Center'; }, setAttribute(key, value) { this.attributes[key] = value; },
     getContext() { return { setTransform() {} }; } });
-  const cells = Array.from({ length: 9 }, (_, index) => ({ ...element(), dataset: { cell: String(index) } }));
+  const cells = Array.from({ length: 9 }, (_, index) => Object.assign(element(), { dataset: { cell: String(index) } }));
   const options = [...html.matchAll(/data-avatar="([^"]+)"/g)].map(([, emoji]) => ({ ...element(), dataset: { avatar: emoji } }));
   const elements = new Map();
   const context = vm.createContext({
     URL, engine, profileAPI, createConfetti: confettiFactory, setupPWA, createAudio, createGameView,
-    document: { ...documentEvents, querySelectorAll: selector => selector === '.cell' ? cells : options, querySelector: id => {
+    document: { ...documentEvents, createElement: element, querySelectorAll: selector => selector === '.cell' ? cells : options, querySelector: id => {
       if (!html.includes(`id="${id.slice(1)}"`) || (missingMeter && id.startsWith('#brainpower'))) return null;
       if (!elements.has(id)) elements.set(id, element());
       return elements.get(id);
@@ -103,7 +103,7 @@ function worker({ cached, network = async () => { throw Error('offline'); }, put
     self: { registration: { scope },
       addEventListener: (name, fn) => { handlers[name] = fn; },
       clients: { claim: async () => {} }, skipWaiting: async () => {} },
-    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v33'],
+    caches: { open: async () => cache, keys: async () => ['other-app', 'bippity-boop-v18', 'bippity-boop-v34'],
       delete: async key => { deleted.push(key); } }
   });
   return { handlers, deleted, writes, request(path, mode = 'cors') {

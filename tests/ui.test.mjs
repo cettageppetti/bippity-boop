@@ -8,12 +8,15 @@ import { eventTarget } from './events.mjs';
 
 function fixture(factory = createGameView) {
   const element = () => ({ ...eventTarget(), attributes: {}, style: {}, textContent: '', disabled: false,
+    appendChild(child) { this.child = child; },
+    get textContent() { return this.child ? this.child.textContent : (this.text || ''); },
+    set textContent(value) { this.text = value; this.child = null; },
     classList: { add() {} }, setAttribute(key, value) { this.attributes[key] = value; } });
   const cells = Array.from({ length: 9 }, element);
   const elements = new Map();
   const state = { round: { board: Array(9).fill(''), over: false, winner: null },
     score: { human: 2, computer: 3, draws: 1 }, selectedAvatar: { emoji: '🐸', name: 'frog' }, learningPoints: 28 };
-  const view = factory({ document: { ...eventTarget(), querySelectorAll: selector => selector === '.cell' ? cells : [],
+  const view = factory({ document: { ...eventTarget(), createElement: element, querySelectorAll: selector => selector === '.cell' ? cells : [],
     querySelector(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); } },
     window: { setTimeout() {} }, getState: () => state, onAvatarSelect() {} });
   return { state, view, cells, elements };
@@ -56,8 +59,25 @@ test('board reset clears piece text, classes, disabled state and accessible name
 
 test('behavior tests kill a view that exposes internal X/O tokens', () => {
   const source = fs.readFileSync(new URL('../deploy/ui.mjs', import.meta.url), 'utf8');
-  const modified = source.replace("cell.textContent = player === HUMAN ? selectedAvatar.emoji : '🤖';", 'cell.textContent = player;');
+  const modified = source.replace("pieces[index].textContent = player === HUMAN ? selectedAvatar.emoji : '🤖';", 'pieces[index].textContent = player;');
   assert.notEqual(modified, source);
   const factory = vm.runInNewContext(modified.replace(/^import .*;\n/, '').replace('export ', '')+'\ncreateGameView', { HUMAN, LEARNING, learningLevel });
   assert.throws(() => pieceChecks(factory), assert.AssertionError);
+});
+
+
+test('pieces stay inside a persistent decorative span through avatar changes and reset', () => {
+  const f = fixture();
+  const piece = f.cells[0].child;
+  assert.equal(piece.className, 'cell-piece');
+  assert.equal(piece.attributes['aria-hidden'], 'true');
+  f.view.placePiece(0, HUMAN);
+  f.state.round.board[0] = HUMAN;
+  f.state.selectedAvatar = { emoji: '🐙', name: 'octopus' };
+  f.view.renderAvatar();
+  assert.equal(piece.textContent, '🐙');
+  assert.equal(f.cells[0].child, piece);
+  f.view.resetBoard();
+  assert.equal(piece.textContent, '');
+  assert.equal(f.cells[0].child, piece);
 });
